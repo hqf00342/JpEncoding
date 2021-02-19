@@ -1,11 +1,19 @@
-﻿using System;
+﻿/*
+JpEncoding サンプルプログラム
+指定されたファイル名のエンコーディングを判定。
+
+JpEncoding.exe <ファイル名>
+
+*/
+
+using System;
 using System.IO;
 using Mii;
 
-//オプション：エンコードミスを許容しない。デフォルトは3
+//エンコードミスを許容しない
 JpEncoding.MaxDecodingFailuresCount = 0;
 
-//オプション：ファイル全長をチェックする。デフォルトは64Kbyte
+//ファイル全長チェック
 JpEncoding.CheckBytes = 0;
 
 if (args.Length > 0 && File.Exists(args[0]))
@@ -15,5 +23,5 @@ if (args.Length > 0 && File.Exists(args[0]))
 }
 else
 {
-    Console.WriteLine($"Usage: JpEncodingTest.exe <ファイル名>");
+    Console.WriteLine($"Usage: JpEncoding.exe <ファイル名>");
 }

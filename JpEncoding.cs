@@ -17,6 +17,7 @@ https://opensource.org/licenses/mit-license.php
   2021-1-20  デコード失敗許容数 MaxDecodingFailuresCount を3に設定。
              .NET Core系で必要な以下のコードを内包
              Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+  2021-2-15  改行コードチェックを導入。CR,LFプロパティで判定。
 
 ## 利用方法
 
@@ -68,17 +69,25 @@ namespace Mii
 {
     public static class JpEncoding
     {
+        //チェックする最大バイト数
+        private const int MAX_CHECK_BYTES = int.MaxValue;
+
         /// <summary>各デコードで許容するデコード失敗回数.厳密チェックする場合は0に設定</summary>
         public static int MaxDecodingFailuresCount { get; set; } = 3;
 
-        /// <summary>判定に利用するバイト数。</summary>
+        /// <summary>判定に利用するバイト数。0に設定すると全チェックする</summary>
         public static int CheckBytes { get; set; } = 65536;
 
-        private const int MAX_CHECK_BYTES = int.MaxValue;
+        /// <summary>CRコード(0x0D)が出現したかどうか</summary>
+        public static bool CR { get; private set; } = false;
+
+        /// <summary>LFコード(0x0A)が出現したかどうか</summary>
+        public static bool LF { get; private set; } = false;
 
         /// <summary>日本語の符号化を推測する(Streamを指定)</summary>
         public static Encoding Guess(Stream stream)
         {
+            //チェックするバイト数を確定する
             if (CheckBytes == 0)
             {
                 try
@@ -86,12 +95,13 @@ namespace Mii
                     var streamlen = stream.Length;
                     CheckBytes = streamlen > MAX_CHECK_BYTES ? MAX_CHECK_BYTES : (int)streamlen;
                 }
-                catch(NotSupportedException)
+                catch (NotSupportedException)
                 {
                     //Length未サポートStreamの場合は仮の値で続行
                     CheckBytes = 65536;
                 }
             }
+
             if (CheckBytes > MAX_CHECK_BYTES)
                 CheckBytes = MAX_CHECK_BYTES;
 
@@ -144,7 +154,7 @@ namespace Mii
             if (bomEnc != null) return bomEnc;
 
             // BOMで判定できなかったので総当たりで判定する。
-            // PASS1:ASCII, JIS, UTF16を検出
+            // PASS1:ASCII, JIS, UTF16を検出、改行コードも検出
             bool asciiOnly = true;
             for (int i = 0; i < len; i++)
             {
@@ -153,6 +163,10 @@ namespace Mii
                 b1 = bytes[i];
                 b2 = (i > len - 2) ? (byte)0 : bytes[i + 1];
                 b3 = (i > len - 3) ? (byte)0 : bytes[i + 2];
+
+                //改行コードチェック:CR
+                if (b1 == 0x0D) CR = true;
+                if (b1 == 0x0A) LF = true;
 
                 //UTF16のASCII文字
                 if (b1 == 0x00 && b2 <= 0x7F)
